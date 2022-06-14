@@ -5,23 +5,21 @@ from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
-# from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
+from . import models
+from .database import engine, SessionaLocal
 
-# from . import models
-# from .database import engine, SessionLocal
-
-# models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 # dependancy
-# def get_db():
-#     db = SessionLocal()
-#     try:
-#         yield db
-#     finally:
-#         db.close()
-
+def get_db():
+    db = SessionaLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # post model
 class Post(BaseModel):
@@ -48,14 +46,17 @@ while True:
 
 # TODO: API STRUCTURE
 
-# @app.get("/sqlalchemy")
-# def test_posts(db: Session = Depends(get_db)):
-#     return {"Status": "succes"}
-
-
 # getting all the posts
+@app.get("/sqlalchemy")
+def test_posts(db: Session = Depends(get_db)):
+    return {'status': 'success'}
+
 @app.get('/posts')
 def get_posts():
+    """
+    gets and returns all the posts from the database
+    :return: posts
+    """
     # executing sql command
     cursor.execute("SELECT * FROM posts")
     # getting all the posts
@@ -68,7 +69,7 @@ def get_posts():
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_post(post:Post):
     """
-    Creates new posts and passes it to the database
+    Creates new posts, saves and returns the new post
     """
     cursor.execute("insert into posts (title, content, published) VALUES(%s, %s, %s) Returning *",(
         post.title, post.content, post.published)) 
@@ -82,6 +83,11 @@ def create_post(post:Post):
 # getting an individual post
 @app.get('/posts/{id}')
 def get_post(id : int):
+    """
+    searches for a matching pose from the passed id
+    :param id:
+    :return: matching post
+    """
     # executing sql code
     cursor.execute("select * from posts where id = %s", (str(id),))
     # saving the fetched post in a variable
@@ -96,6 +102,11 @@ def get_post(id : int):
 # deleting a post:
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
+    """
+    deletes a post from the database, searches for the posts matching the id passed
+    :param id:
+    :return:
+    """
     # cut, drop the post from database
     cursor.execute("delete from posts where id = %s returning*", (str(id),))
     deleted_post = cursor.fetchone() #deleted post
@@ -107,12 +118,14 @@ def delete_post(id: int):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# updating posts
 @app.put("/posts/{id}")
 def update_post(post: Post, id:int):
     cursor.execute("update posts set title = %s, content = %s, published = %s where id = %s returning*",
                    (post.title, post.content, post.published, str(id),))
     updated_post = cursor.fetchone()
-    print(updated_post)
+    # raise a 404 if not found
     if updated_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with ID:({id} does not exist!)")
+    # return the updated post
     return {"message": updated_post}
