@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException, status, Response
+from typing import List
 from fastapi.params import Body
 from pydantic import BaseModel
 from random import randrange
@@ -6,7 +7,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 from sqlalchemy.orm import Session
-from . import models
+from . import models, schemas
 from .database import engine, SessionaLocal, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -14,11 +15,6 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-# post model
-class Post(BaseModel):
-    title: str
-    content: str
-    published : bool = True
 
 
 # connnecting to the database, pysocpg2
@@ -40,7 +36,7 @@ while True:
 # TODO: API STRUCTURE
 
 # getting all the posts
-@app.get('/posts')
+@app.get('/posts', response_model=List[schemas.Post_response])
 def get_posts(db: Session = Depends(get_db)):
     """
     gets and returns all the posts from the database
@@ -53,12 +49,12 @@ def get_posts(db: Session = Depends(get_db)):
     # # returning all the posts on the database
     # with sqlalchemy
     posts = db.query(models.Post).all()     # getting all the posts
-    return {"data":posts}
+    return posts
 
 
 # creating posts
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_post(post:Post, db: Session = Depends(get_db)):
+@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model=schemas.Post_response)
+def create_post(post:schemas.PostCreate, db: Session = Depends(get_db)):
     """
     Creates new posts, saves and returns the new post
     """
@@ -76,12 +72,12 @@ def create_post(post:Post, db: Session = Depends(get_db)):
     # returning the created post
     db.refresh(new_post)
     # return statement
-    return {'data': new_post}
+    return  new_post
 
 
 
 # getting an individual post
-@app.get('/posts/{id}')
+@app.get('/posts/{id}', response_model=schemas.Post_response)
 def get_post(id : int,db: Session = Depends(get_db)):
     """
     searches for a matching pose from the passed id
@@ -98,7 +94,7 @@ def get_post(id : int,db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with ID: ({id}) does not exist!")
     # return post if found
-    return {"detail": post}
+    return post
 
 
 # deleting a post:
@@ -127,8 +123,8 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 # updating posts
-@app.put("/posts/{id}")
-def update_post(updated_post: Post, id:int, db: Session = Depends(get_db)):
+@app.put("/posts/{id}", response_model=schemas.Post_response)
+def update_post(updated_post: schemas.PostCreate, id:int, db: Session = Depends(get_db)):
     # cursor.execute("update posts set title = %s, content = %s, published = %s where id = %s returning*",
     #                (post.title, post.content, post.published, str(id),))
     # updated_post = cursor.fetchone()
