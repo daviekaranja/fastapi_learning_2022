@@ -142,4 +142,4 @@ def update_post(updated_post: Post, id:int, db: Session = Depends(get_db)):
     post_query.update(updated_post.dict(), synchronize_session=False)
     db.commit()
     # return the updated post
-    return {"message":post_query.first()}
+    return post_query.first()
