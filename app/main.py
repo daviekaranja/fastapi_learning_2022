@@ -1,12 +1,26 @@
-from fastapi import FastAPI, HTTPException, status, Response
+from fastapi import Depends, FastAPI, HTTPException, status, Response
 from fastapi.params import Body
 from pydantic import BaseModel
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
+# from sqlalchemy.orm import Session
+
+# from . import models
+# from .database import engine, SessionLocal
+
+# models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# dependancy
+# def get_db():
+#     db = SessionLocal()
+#     try:
+#         yield db
+#     finally:
+#         db.close()
 
 
 # post model
@@ -32,13 +46,12 @@ while True:
 
 
 
-my_posts = [{'title': 'title of post1', 'content': 'content of post1', 'id': 1},
-            {'title': 'favourite foods', 'content': 'I like pizza', 'id':2},
-            {'title': 'favourite colors', 'content': 'red, blue, green', 'id': 3}]
-
-
-
 # TODO: API STRUCTURE
+
+# @app.get("/sqlalchemy")
+# def test_posts(db: Session = Depends(get_db)):
+#     return {"Status": "succes"}
+
 
 # getting all the posts
 @app.get('/posts')
@@ -89,16 +102,17 @@ def delete_post(id: int):
     conn.commit() #saving changes to the database
     # raise exception if post not found
     if deleted_post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with ID:(id) does not exist!")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with ID:({id}) does not exist!")
     # return a 204 when deleted
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.put("/posts/{id}")
 def update_post(post: Post, id:int):
-    cursor.execute("update posts set title = %s, set content = %s, set published = %s where id = %s returning*", (post.title, post.content, post.published, str(id),))
-    
+    cursor.execute("update posts set title = %s, content = %s, published = %s where id = %s returning*",
+                   (post.title, post.content, post.published, str(id),))
     updated_post = cursor.fetchone()
+    print(updated_post)
     if updated_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with ID:({id} does not exist!)")
     return {"message": updated_post}
