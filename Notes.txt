@@ -1,0 +1,4 @@
+AUTHENTICATION:
+    - users need to be logged in to perfom some operations like
+    - users are forced to be logged in by passing :(user_id : int = Depends(oauth2.get_current_user) in the path operation function
+        1. creating a post
