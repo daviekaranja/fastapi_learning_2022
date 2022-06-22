@@ -1,4 +1,35 @@
 AUTHENTICATION:
-    - users need to be logged in to perfom some operations like
+    - users need to be logged in to perform some operations like
     - users are forced to be logged in by passing :(user_id : int = Depends(oauth2.get_current_user) in the path operation function
         1. creating a post
+
+5. QUERY PARAMETERS
+    - they provide a way to get filters, ie filter the number of posts a user wants to retrieve from the api
+    - they are passed on the path operation function
+    - you type a ? after the url path then the name of the query parameters
+
+6. ENVIRONMENT VARIABLES
+
+
+7. Voting/Likes System
+    Requirements:
+        - users should like a post and only once
+        - retrieving posts should also fetch the number of likes
+
+    Vote Model:
+        - column referencing the liked post id
+        - column referencing id of user who liked the post
+        - a suer should only vote once, so the post_id/voter_id should be a unique combination
+
+        Composite keys:
+            - its a primary key that spans multiple columns
+            - since primary keys must be unique, this will ensure no one will vote twice
+
+
+8. Table Joins:
+
+
+9. Alembic:
+    - Database migrations allow us to incrementally track changes to the database schema and rollback changes to any point in time
+    - We use a tool called Alembic to make changes to our database
+    - Alembic can also automatically pull database models from sqlalchemy and generate proper tables

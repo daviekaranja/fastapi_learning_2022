@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.encoders import jsonable_encoder
 from dateutil import parser
 from sqlalchemy.orm import Session
+from .config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -15,9 +16,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 # algorithm
 # expiry_time
 
-SECRET_KEY = "atdhavdstduahl90DJAYFalkpmnSdnAOPJMNCBOiaupacmnif"
-ALGORITHIM = "HS256"
-ACCESS_TOKEN_MINUTES = 60
+SECRET_KEY = settings.secret_key
+ALGORITHIM = settings.algorithm
+ACCESS_TOKEN_MINUTES = settings.access_token_expire_minutes
 
 # create token
 def create_access_token(data: dict):
@@ -47,17 +48,20 @@ def verify_access_token(token: str, credentials_exception):
         # raise exception if there no id
         if id is None:
             raise credentials_exception
+        token_data = schemas.TokenData(id=id) #appending the id to the token data
+        # token
         #   checking if has the token has an expiration date, raise a http exeception if none
         if expires is None:
             raise credentials_exception
         # converting it to a datetime
+
         expires = parser.parse(expires)
 
         # checking if the datetime is expired
         if datetime.now() > expires:
             raise credentials_exception
 
-        token_data = schemas.TokenData()
+
 
 
     # if token not correct
@@ -67,9 +71,12 @@ def verify_access_token(token: str, credentials_exception):
     return token_data
 
 # returns the current user
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                           detail=f"Could not validate credentials",headers={"ww-Authenticate": "Bearer"})
-    # db.query(models.User).filter(models.User.id == token.id)
-
-    return verify_access_token(token, credentials_exception)
+    # getting token data
+    token = verify_access_token(token, credentials_exception)
+    # getting a user by the id which is passed in the token
+    user = db.query(models.User).filter(models.User.id == token.id).first()
+    # returning the user
+    return user

@@ -1,15 +1,18 @@
 from fastapi import Depends, FastAPI, HTTPException, status, Response, APIRouter
 from .. import models, schemas, utils, oauth2
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from ..database import get_db
+from sqlalchemy import func
 
 router = APIRouter(prefix="/posts", tags=['Posts'])
 
 
 # getting all the posts
-@router.get('/', response_model=List[schemas.Post_response])
-def get_posts(db: Session = Depends(get_db), current_user : int = Depends(oauth2.get_current_user)):
+# @router.get('/', response_model=List[schemas.Post_likes]) TODO: fix the response model
+@router.get('/')
+def get_posts(db: Session = Depends(get_db), current_user : int = Depends(oauth2.get_current_user),
+              limit: int = 10, skip:int = 0, search : Optional[str] = ''):
     """
     gets and returns all the posts from the database
     :return: posts
@@ -20,8 +23,12 @@ def get_posts(db: Session = Depends(get_db), current_user : int = Depends(oauth2
     # posts = cursor.fetchall()
     # # returning all the posts on the database
     # with sqlalchemy
-    posts = db.query(models.Post).all()  # getting all the posts
-    return posts
+
+    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all() # getting all the posts, limiting to the post_limit max
+    results = db.query(models.Post, func.count(models.Votes.post_id).label('likes')).join(models.Votes, models.Votes.post_id == models.Post.id,
+                                         isouter=True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    # posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()     #getting the post only for the logged in user
+    return results
 
 
 # creating posts
@@ -29,6 +36,7 @@ def get_posts(db: Session = Depends(get_db), current_user : int = Depends(oauth2
 def create_post(post: schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     """
     Creates new posts, saves and returns the new post
+    should pass the
     """
     # cursor.execute("insert into posts (title, content, published) VALUES(%s, %s, %s) Returning *",(
     #     post.title, post.content, post.published))
@@ -36,7 +44,7 @@ def create_post(post: schemas.PostCreate, db: Session = Depends(get_db), current
     # new_post = cursor.fetchone() # returns the created post
     # conn.commit() #saves changes to the database, commit the changes
     # with sqlalchemy
-    new_post = models.Post(**post.dict())  # unpacking the pydantic model to a python dictionary with all the fields
+    new_post = models.Post(owner_id = current_user.id, **post.dict())  # unpacking the pydantic model to a python dictionary with all the fields
     # adding to the database
     db.add(new_post)
     # saving the changes
@@ -81,12 +89,16 @@ def delete_post(id: int, db: Session = Depends(get_db), current_user: int = Depe
     # deleted_post = cursor.fetchone() #deleted post
     # conn.commit() #saving changes to the database
     # raise exception if post not found
-    post = db.query(models.Post).filter(models.Post.id == id)  # matching a post with supplied id
+    post_query = db.query(models.Post).filter(models.Post.id == id)  # matching a post with supplied id
+    post = post_query.first()
 
-    if post.first() == None:  # checking if the first post matches the id
+    if post == None:  # checking if the first post matches the id
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with ID:({id}) does not exist!")
+
+    if post.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"not authorized to perform requested operation")
     # deleting the post
-    post.delete(synchronize_session=False)
+    post_query.delete(synchronize_session=False)
     # saving the changes to the database
     db.commit()
     # return a 204 when deleted
@@ -105,6 +117,10 @@ def update_post(updated_post: schemas.PostCreate, id: int, db: Session = Depends
     post = post_query.first()
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with ID:({id} does not exist!)")
+
+    # making sure the owner is deleting only his posts
+    if post.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"not authorized to perform requested operation")
 
     post_query.update(updated_post.dict(), synchronize_session=False)
     db.commit()
