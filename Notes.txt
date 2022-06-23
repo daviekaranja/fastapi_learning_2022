@@ -33,3 +33,7 @@ AUTHENTICATION:
     - Database migrations allow us to incrementally track changes to the database schema and rollback changes to any point in time
     - We use a tool called Alembic to make changes to our database
     - Alembic can also automatically pull database models from sqlalchemy and generate proper tables
+
+    -> Alembic init:
+        - this runs the alembic configurations and creates an alembic folder in the root directory
+    -> Alembic revision: creates a revision file, used to upgrade or rollback table changes
