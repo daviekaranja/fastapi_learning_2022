@@ -37,3 +37,6 @@ AUTHENTICATION:
     -> Alembic init:
         - this runs the alembic configurations and creates an alembic folder in the root directory
     -> Alembic revision: creates a revision file, used to upgrade or rollback table changes
+
+10. Deployment:
+    -> using Heroku to deploy the api

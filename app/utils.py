@@ -11,6 +11,7 @@ def hash(password: str):
     """
     return pwd_context.hash(password)
 
+
 # confirm password
 def verify(plain_password, hashed_password):
     """
