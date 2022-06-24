@@ -37,7 +37,9 @@ print('-----' * 20)
 
 @app.get('/')
 def hello():
-    return 'Hello World'
+    return 'Hey, my name is Davie Karanja, \n' \
+           'Glad you found me. \n' \
+           'this is my web API more is coming..'
 
 
 
